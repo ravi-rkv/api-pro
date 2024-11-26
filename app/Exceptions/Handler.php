@@ -2,8 +2,13 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
+use Psr\Log\LogLevel;
+use Illuminate\Support\Str;
+use App\Services\ApiResponse;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 class Handler extends ExceptionHandler
 {
@@ -44,5 +49,34 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    public function render($request, Throwable $exception)
+    {
+        // Generate a unique request ID
+        $requestId = (string) Str::uuid();
+        $request->merge(['request_id' => $requestId]);
+
+        // Handle specific exceptions
+        if ($exception instanceof MethodNotAllowedHttpException) {
+            return ApiResponse::response(
+                'IPE',
+                'HTTP Method Not Allowed , The requested HTTP method is not allowed for this route.',
+                [],
+                405
+            );
+        }
+
+        if ($exception instanceof NotFoundHttpException) {
+            return ApiResponse::response(
+                'IPE',
+                'Route Not Found , The requested route could not be found.',
+                [],
+                404
+            );
+        }
+
+        // Call parent render for other exceptions
+        return parent::render($request, $exception);
     }
 }
