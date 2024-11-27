@@ -18,23 +18,28 @@ class LogRequestResponse
         $request->merge(['request_id' => $requestId]);
         $response = $next($request);
         $response->headers->set('X-Request-ID', $requestId);
+        $payload = $request->all();
+        if (isset($payload['password'])) {
+            $payload['password'] = '********'; // Mask the password
+        }
+        $start = microtime(true);
+        $response = $next($request);
+        $duration = round((microtime(true) - $start) * 1000, 2); // Calculate duration in milliseconds
+
 
         // Log the request and response
-        $this->log($request, $response, $requestId);
-
-        return $response;
-    }
-
-    protected function log(Request $request, $response, $requestId)
-    {
         RestApiLog::create([
             'request_id' => $requestId,
             'method' => $request->method(),
             'url' => $request->fullUrl(),
             'headers' => json_encode($request->headers->all()),
-            'payload' => $request->except(['password']), // Exclude sensitive data
+            'payload' => $payload, // Exclude sensitive data
             'response' => json_decode($response->getContent(), true),
             'status_code' => $response->status(),
+            'ip' => $request->ip(),
+            'duration' => $duration
         ]);
+
+        return $response;
     }
 }

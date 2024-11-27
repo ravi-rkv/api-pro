@@ -17,16 +17,22 @@ return new class extends Migration
             $table->string('user_name');
             $table->string('email')->unique();
             $table->string('mobile', 14)->unique();
+            $table->date('dob');
+            $table->string('city', 100)->nullable();
+            $table->string('state', 100)->nullable();
+            $table->string('country', 100)->nullable();
+            $table->text('address')->nullable();
             $table->string('password');
-            $table->string('profile_image');
+            $table->string('avatar');
+            $table->text('role_id', 2);
             $table->tinyInteger('twofa_status')->default('1');
             $table->tinyInteger('twofa_config');
             $table->tinyInteger('is_deleted')->default('0');
             $table->enum('account_status', ['PENDING', 'ACTIVE', 'INACTIVE', 'BLOCKED'])->default('PENDING');
             $table->timestamp('created_at');
             $table->string('created_by', 50);
-            $table->timestamp('updated_at');
-            $table->string('updated_by', 50);
+            $table->timestamp('updated_at')->nullable();
+            $table->string('updated_by', 50)->nullable();
         });
     }
 

@@ -21,6 +21,8 @@ return new class extends Migration
             $table->json('payload')->nullable();
             $table->json('response')->nullable();
             $table->integer('status_code');
+            $table->text('ip', 50);
+            $table->text('duration', 50);
             $table->timestamps();
         });
     }

@@ -21,8 +21,6 @@ class AuthController extends Controller
     public function validateUserLogin(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            // 'email' => 'nullable|email|required_without:mobile',
-            // 'mobile' => 'nullable|regex:/^[6-9]\d{9}$/|required_without:email',
             'username' => [
                 'required',
                 function ($attribute, $value, $fail) {
@@ -38,6 +36,6 @@ class AuthController extends Controller
             return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
         }
 
-        return $this->authService->validateUserLogin($request->only(['username', 'password']));
+        return $this->authService->validateUserLoginService($request->only(['username', 'password']));
     }
 }

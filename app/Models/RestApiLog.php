@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
 
 class RestApiLog extends Model
 {
-    use HasFactory;
+
     protected $fillable = [
         'request_id',
         'uid',
@@ -17,6 +17,8 @@ class RestApiLog extends Model
         'payload',
         'response',
         'status_code',
+        'ip',
+        'duration'
     ];
 
     protected $casts = [
