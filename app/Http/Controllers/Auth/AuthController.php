@@ -35,7 +35,6 @@ class AuthController extends Controller
         if ($validator->fails() == TRUE) {
             return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
         }
-
         return $this->authService->validateUserLoginService($request->only(['username', 'password']));
     }
 }

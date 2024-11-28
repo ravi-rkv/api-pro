@@ -21,8 +21,8 @@ class RestApiLog extends Model
         'duration'
     ];
 
-    protected $casts = [
-        'payload' => 'json',
-        'response' => 'json',
-    ];
+    // protected $casts = [
+    //     'payload' => 'json',
+    //     'response' => 'json',
+    // ];
 }

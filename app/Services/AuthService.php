@@ -5,7 +5,7 @@ namespace App\Services;
 use Carbon\Carbon;
 use App\Models\User;
 use Firebase\JWT\JWT;
-use App\Models\ApiTokenLogs;
+use App\Models\ApiTokenLog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 
@@ -33,7 +33,9 @@ class AuthService
 
         if ($userDetail['twofa_status'] === 1) {
             return $this->sendLoginOtp($userDetail);
-        }
+        };
+
+        $userDetail = User::userDetail($userDetail['uid']);
 
 
         return $this->generateUserLoginToken($userDetail);
@@ -41,6 +43,7 @@ class AuthService
 
     private function generateUserLoginToken($userDetail)
     {
+
         try {
             // Validate request_id
             $requestId = Request::get('request_id');
@@ -61,9 +64,10 @@ class AuthService
 
             if ($token) {
 
-                ApiTokenLogs::where('uid', $payload['uid'])->update(['is_active' => 0]);
+                ApiTokenLog::where('uid', $payload['uid'])->update(['is_active' => 0]);
 
-                $logApiToken = ApiTokenLogs::create([
+
+                $logApiToken = ApiTokenLog::create([
                     'uid' => $payload['uid'],
                     'token' => $token,
                     'ip' => $payload['ip'],
@@ -73,7 +77,20 @@ class AuthService
                 ]);
 
                 if ($logApiToken) {
-                    return ApiResponse::response('RCS', 'Logged in successfully.', ['token' => $token], 200);
+                    $data = [
+                        'type' => 'Bearer',
+                        'token' => $token,
+                        'logged_in_at' => $payload['logged_in_at'],
+                        'user_detail' => [
+                            'uid' => $userDetail['uid'],
+                            'user_name' => $userDetail['user_name'],
+                            'email' => $userDetail['email'],
+                            'mobile' => $userDetail['mobile'],
+                            'role_id' => $userDetail['role_id'],
+                            'role_name' => $userDetail['role_name']
+                        ]
+                    ];
+                    return ApiResponse::response('RCS', 'Logged in successfully.', $data, 200);
                 }
             }
 

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ApiTokenLogs extends Model
+class ApiTokenLog extends Model
 {
 
     protected $fillable = [

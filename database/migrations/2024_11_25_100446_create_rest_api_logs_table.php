@@ -18,11 +18,11 @@ return new class extends Migration
             $table->string('method');
             $table->string('url');
             $table->text('headers');
-            $table->json('payload')->nullable();
-            $table->json('response')->nullable();
-            $table->integer('status_code');
-            $table->text('ip', 50);
-            $table->text('duration', 50);
+            $table->text('payload')->nullable();
+            $table->text('response')->nullable();
+            $table->integer('status_code')->nullable();
+            $table->text('ip', 50)->nullable();
+            $table->text('duration', 50)->nullable();
             $table->timestamps();
         });
     }

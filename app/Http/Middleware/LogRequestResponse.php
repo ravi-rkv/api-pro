@@ -3,43 +3,63 @@
 namespace App\Http\Middleware;
 
 
-use App\Models\RestApiLog;
 use Closure;
+use App\Models\RestApiLog;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class LogRequestResponse
 {
+    protected $sensitiveParams = ['password'];
+
     public function handle(Request $request, Closure $next)
     {
 
+
         $requestId = (string) Str::uuid();
         $request->merge(['request_id' => $requestId]);
-        $response = $next($request);
-        $response->headers->set('X-Request-ID', $requestId);
-        $payload = $request->all();
-        if (isset($payload['password'])) {
-            $payload['password'] = '********'; // Mask the password
-        }
-        $start = microtime(true);
-        $response = $next($request);
-        $duration = round((microtime(true) - $start) * 1000, 2); // Calculate duration in milliseconds
+        $request->headers->set('X-Request-ID', $requestId);
+        $payload = $this->maskSensitiveFields($request->all());
 
 
-        // Log the request and response
-        RestApiLog::create([
+        $logId = DB::table('rest_api_logs')->insertGetId([
             'request_id' => $requestId,
             'method' => $request->method(),
             'url' => $request->fullUrl(),
             'headers' => json_encode($request->headers->all()),
-            'payload' => $payload, // Exclude sensitive data
-            'response' => json_decode($response->getContent(), true),
-            'status_code' => $response->status(),
+            'payload' => json_encode($payload),
+            'status_code' => null,
+            'response' => null,
             'ip' => $request->ip(),
-            'duration' => $duration
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $start = microtime(true);
+
+        $response = $next($request);
+
+        $duration = round((microtime(true) - $start) * 1000, 2); // Calculate duration in milliseconds
+
+        DB::table('rest_api_logs')->where('id', $logId)->update([
+            'status_code' => $response->getStatusCode(),
+            'response' => $response->getContent(),
+            'duration' => $duration,
+            'updated_at' => now(),
         ]);
 
         return $response;
+    }
+
+    private function maskSensitiveFields(array $payload): array
+    {
+        foreach ($this->sensitiveParams as $param) {
+            if (isset($payload[$param])) {
+                $payload[$param] = str_repeat('*', strlen($payload[$param]));
+            }
+        }
+        return $payload;
     }
 }
