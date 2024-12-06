@@ -19,9 +19,10 @@ class DatabaseSeeder extends Seeder
 
         \App\Models\User::create([
             'uid' => 'ADM000001',
-            'user_name' => 'Admin',
+            'name' => 'Admin',
             'email' => 'ravi.verma@ciphersquare.tech',
             'mobile' => '7355988863',
+            'gender' => 'MALE',
             'dob' => Carbon::now()->toDate(),
             'city' => 'Delhi',
             'state' => 'Delhi',

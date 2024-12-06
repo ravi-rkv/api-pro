@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use Firebase\JWT\JWT;
 use App\Models\ApiTokenLog;
+use App\Models\TempUserRegistration;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 
@@ -32,11 +33,10 @@ class AuthService
         /* -------------------------- check if 2fa enabled -------------------------- */
 
         if ($userDetail['twofa_status'] === 1) {
-            return $this->sendLoginOtp($userDetail);
+            return $this->sendOtp($userDetail);
         };
 
         $userDetail = User::userDetail($userDetail['uid']);
-
 
         return $this->generateUserLoginToken($userDetail);
     }
@@ -45,7 +45,6 @@ class AuthService
     {
 
         try {
-            // Validate request_id
             $requestId = Request::get('request_id');
             if (empty($requestId)) {
                 return ApiResponse::response('IVR', 'Invalid request ID.', [], 400);
@@ -64,7 +63,7 @@ class AuthService
 
             if ($token) {
 
-                ApiTokenLog::where('uid', $payload['uid'])->update(['is_active' => 0]);
+                // ApiTokenLog::where('uid', $payload['uid'])->update(['is_active' => 0]);
 
 
                 $logApiToken = ApiTokenLog::create([
@@ -80,7 +79,6 @@ class AuthService
                     $data = [
                         'type' => 'Bearer',
                         'token' => $token,
-                        'logged_in_at' => $payload['logged_in_at'],
                         'user_detail' => [
                             'uid' => $userDetail['uid'],
                             'user_name' => $userDetail['user_name'],
@@ -88,7 +86,8 @@ class AuthService
                             'mobile' => $userDetail['mobile'],
                             'role_id' => $userDetail['role_id'],
                             'role_name' => $userDetail['role_name']
-                        ]
+                        ],
+                        'logged_in_at' => $payload['logged_in_at']
                     ];
                     return ApiResponse::response('RCS', 'Logged in successfully.', $data, 200);
                 }
@@ -100,8 +99,43 @@ class AuthService
         }
     }
 
+    private function sendOtp($userDetail) {}
 
+    public function validateUserRegistration($params)
+    {
+        if (empty($params)) {
+            ApiResponse::response('IRD', 'Invalid request detail.', [], 400);
+        }
 
+        $registrationId = generateNewRegistrationId();
+        if (empty($registrationId)) {
+            ApiResponse::response('SWW', 'Something went wrong , try again later', [], 500);
+        }
 
-    private function sendLoginOtp($userDetail) {}
+        $saveRegistrationDetail = TempUserRegistration::create([
+            'registration_id' => $registrationId,
+            'name' => $params['name'],
+            'email' => $params['email'],
+            'mobile' => $params['mobile'],
+            'gender' => $params['gender'],
+            'dob' => $params['dob'],
+            'city' => $params['city'],
+            'state' => $params['state'],
+            'country' => $params['country'],
+            'address' => $params['address'],
+            'password' => $params['password'],
+            'is_verified' => 'PENDING',
+            'created_at' => Carbon::now()->toDateTimeString(),
+        ]);
+
+        if (!$saveRegistrationDetail) {
+            ApiResponse::response('SWW', 'Something went wrong , try again later', [], 500);
+        }
+
+        $notificationDetail = [
+            'event_code' => 'NEWREG'
+        ];
+
+        $this->sendOtp();
+    }
 }

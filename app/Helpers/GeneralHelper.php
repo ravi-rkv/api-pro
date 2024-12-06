@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\TempUserRegistration;
+
 if (!function_exists('encrypt_pass')) {
     function encrypt_pass($text, $data_array)
     {
@@ -31,6 +33,33 @@ if (!function_exists('decrypt_pass')) {
 
                 $decryptedString = openssl_decrypt($decodedText, 'AES-256-CBC', $encKey, 0, $iv);
                 return $decryptedString;
+            }
+        }
+    }
+}
+if (!function_exists('generateRandomString')) {
+    function generateRandomString($length = 6)
+    {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $randomString = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[rand(0, strlen($characters) - 1)];
+        }
+        return $randomString;
+    }
+}
+
+if (!function_exists('generateNewRegistrationId')) {
+    function generateNewRegistrationId()
+    {
+        $regNo = 'REG' . date('Ymdhis') . strtoupper(generateRandomString());
+        if ($regNo) {
+            $checkIfExist = TempUserRegistration::where('registration_id', $regNo)->first();
+            if ($checkIfExist) {
+                return generateNewRegistrationId();
+            } else {
+                return $regNo;
             }
         }
     }

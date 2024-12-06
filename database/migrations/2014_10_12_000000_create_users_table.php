@@ -14,9 +14,10 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('uid');
-            $table->string('user_name');
+            $table->string('name');
             $table->string('email')->unique();
             $table->string('mobile', 14)->unique();
+            $table->enum('gender', ['MALE', 'FEMALE', 'OTHERS'])->default('MALE');
             $table->date('dob');
             $table->string('city', 100)->nullable();
             $table->string('state', 100)->nullable();

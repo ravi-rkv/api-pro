@@ -20,3 +20,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::post('/login', [AuthController::class, 'validateUserLogin']);
+Route::post('/userRegistration', [AuthController::class, 'userRegistration']);
+
+Route::middleware('validateToken')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logoutUser']);
+});
