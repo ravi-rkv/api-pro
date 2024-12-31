@@ -61,7 +61,7 @@ class Handler extends ExceptionHandler
         if ($exception instanceof MethodNotAllowedHttpException) {
             return ApiResponse::response(
                 'IPE',
-                'HTTP Method Not Allowed , The requested HTTP method is not allowed for this route.',
+                'HTTP Method Not Allowed , The requested HTTP method is not allowed for this service',
                 [],
                 405
             );
@@ -70,7 +70,7 @@ class Handler extends ExceptionHandler
         if ($exception instanceof NotFoundHttpException) {
             return ApiResponse::response(
                 'IPE',
-                'Route Not Found , The requested route could not be found.',
+                'Invalid requested url.',
                 [],
                 404
             );

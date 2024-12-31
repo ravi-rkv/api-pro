@@ -71,6 +71,27 @@ class AuthController extends Controller
         return $this->authService->validateUserRegistration($request->all());
     }
 
+    public function verifyRegistrationOtp(Request $request)
+    {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'otp' => 'required|numeric|size:6',
+                'otp_reference' => 'required',
+                'registration_reference' => 'required'
+            ],
+            [
+                'size' => 'The :attribute must be exactly :size digit.',
+            ]
+        );
+
+        if ($validator->fails() == TRUE) {
+            return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
+        }
+
+        echo 'ok';
+    }
+
     public function logoutUser(Request $request)
     {
 

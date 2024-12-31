@@ -99,8 +99,6 @@ class AuthService
         }
     }
 
-    private function sendOtp($userDetail) {}
-
     public function validateUserRegistration($params)
     {
         if (empty($params)) {
@@ -123,7 +121,7 @@ class AuthService
             'state' => $params['state'],
             'country' => $params['country'],
             'address' => $params['address'],
-            'password' => $params['password'],
+            'password' => generateRandomString(8),
             'is_verified' => 'PENDING',
             'created_at' => Carbon::now()->toDateTimeString(),
         ]);
@@ -133,9 +131,38 @@ class AuthService
         }
 
         $notificationDetail = [
-            'event_code' => 'NEWREG'
+            'event_code' => 'NEWREG',
+            'extra_identifier' => $registrationId,
+            'name' => ucfirst($params['name']),
+            'email' => $params['email'],
+            'mobile' => $params['mobile']
         ];
 
-        $this->sendOtp();
+        return $this->sendOtp($notificationDetail);
+    }
+
+    private function sendOtp($notificationDetail)
+    {
+        if (!empty($notificationDetail)) {
+            $notifyDetail = $notificationDetail;
+            $notifyDetail['otp_ref'] =  !empty($notificationDetail['otp_ref']) ? $notificationDetail['otp_ref'] : date('Hmi') . rand(100001, 999999) . date('sY');
+
+            $sendNotification = new NotificationService();
+            $sendOtp =  $sendNotification->sendOtp($notifyDetail);
+
+            if ($sendOtp['resp_code'] == 'RCS') {
+                $data = ['otp_reference' => $notifyDetail['otp_ref']];
+
+                if ($notificationDetail['event_code'] == 'NEWREG') {
+                    $data['registration_reference'] = $notifyDetail['extra_identifier'];
+                }
+
+                return ApiResponse::response('RCS', 'OTP sent successfully', $data, 200);
+            } else {
+                return ApiResponse::response('ERR', 'Someting went wrong, try again later..!!', [], 500);
+            }
+        } else {
+            return ApiResponse::response('IPE', 'Internal processing error. #NDNV', [], 500);
+        }
     }
 }

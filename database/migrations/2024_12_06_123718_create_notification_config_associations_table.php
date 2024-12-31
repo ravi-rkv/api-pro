@@ -16,7 +16,12 @@ return new class extends Migration
             $table->string('notify_id');
             $table->enum('notify_on', ['EMAIL', 'SMS'])->default('EMAIL');
             $table->string('op1', 150)->nullable()->comment('notification sent from ');
-            $table->string('op2', 150)->nullable()->comment('notification sent from');
+            $table->string('op2', 150)->nullable();
+            $table->string('op3', 150)->nullable();
+            $table->string('op4', 150)->nullable();
+            $table->string('op5', 150)->nullable();
+            $table->text('content');
+            $table->tinyInteger('is_active')->default('1');
             $table->timestamps();
         });
     }
