@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 use App\Models\ApiTokenLog;
 use Illuminate\Http\Request;
 use App\Services\ApiResponse;
 use App\Services\AuthService;
 use App\Http\Controllers\Controller;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -73,21 +74,32 @@ class AuthController extends Controller
 
     public function verifyRegistrationOtp(Request $request)
     {
+
+
+        // var_dump($request->all());
         $validator = Validator::make(
             $request->all(),
             [
-                'otp' => 'required|numeric|size:6',
+                'otp' => 'required|string|numeric|size:6',
                 'otp_reference' => 'required',
                 'registration_reference' => 'required'
             ],
             [
-                'size' => 'The :attribute must be exactly :size digit.',
+                'otp.size' => 'The :attribute must be exactly 6 digits.',
+                'otp.required' => 'The OTP is required.',
+                'otp.numeric' => 'The OTP must be numeric.',
+                'otp_reference.required' => 'The OTP reference is required.',
+                'registration_reference.required' => 'The registration reference is required.',
             ]
         );
+        Log::info('OTP Input: ', ['request' => $request->all()]);
 
         if ($validator->fails() == TRUE) {
             return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
         }
+
+
+
 
         echo 'ok';
     }
