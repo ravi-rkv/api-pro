@@ -80,12 +80,12 @@ class AuthController extends Controller
         $validator = Validator::make(
             $request->all(),
             [
-                'otp' => 'required|string|numeric|size:6',
+                'otp' => 'required|numeric|digits:6',
                 'otp_reference' => 'required',
                 'registration_reference' => 'required'
             ],
             [
-                'otp.size' => 'The :attribute must be exactly 6 digits.',
+                'otp.size' => 'The OTP must be exactly 6 digits.',
                 'otp.required' => 'The OTP is required.',
                 'otp.numeric' => 'The OTP must be numeric.',
                 'otp_reference.required' => 'The OTP reference is required.',
@@ -98,10 +98,7 @@ class AuthController extends Controller
             return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
         }
 
-
-
-
-        echo 'ok';
+        return $this->authService->verifyUserRegistrationOtp($request->all());
     }
 
     public function logoutUser(Request $request)

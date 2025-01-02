@@ -64,3 +64,65 @@ if (!function_exists('generateNewRegistrationId')) {
         }
     }
 }
+
+if (!function_exists('generateUserId')) {
+    function generateUserId($userRoleId)
+    {
+
+        $userRoleId = (is_numeric($userRoleId) || ctype_digit($userRoleId)) ? trim($userRoleId) : '';
+
+        if ($userRoleId) {
+
+            $allowedUserRole = [
+                '1' => 'ADM',
+                '2' => 'USR',
+            ];
+
+            $uidSequence = '';
+            if (in_array($userRoleId, array_keys($allowedUserRole))) {
+                $getExistUid = \App\Models\User::select('uid')->where('role_id', $userRoleId)->orderBy('id', 'DESC')->first();
+
+                if (!empty($getExistUid)) {
+
+                    $lastUid = $getExistUid['uid'];
+                    $checkInitials = substr($lastUid, 0, 3);
+
+                    if (($checkInitials == $allowedUserRole[$userRoleId])) {
+                        $uidSequence = substr($lastUid, 3);
+                    } else {
+                        return false;
+                    }
+                } else {
+                    $uidSequence = '0';
+                }
+            }
+            if (is_numeric($uidSequence)) {
+                $nextSequesce = $uidSequence + 1;
+
+                $numSeq = strlen($nextSequesce);
+
+                if ($numSeq < 6) {
+                    $numeric_part = '';
+
+                    for ($i = 0; $i < (6 - $numSeq); $i++) {
+                        $numeric_part .= '0';
+                    }
+
+                    $numeric_part .= $nextSequesce;
+                } else if ($numSeq == 6) {
+                    $numeric_part = $nextSequesce;
+                } else {
+                    return false;
+                }
+
+                $uid = $allowedUserRole[$userRoleId] . $numeric_part;
+
+                $checkUidExist = \App\Models\User::where('uid', $uid)->first();
+
+                if (!$checkUidExist) {
+                    return $uid;
+                }
+            }
+        }
+    }
+}

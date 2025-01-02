@@ -23,7 +23,8 @@ return new class extends Migration
             $table->text('content');
             $table->integer('sent_count')->default('1');
             $table->tinyInteger('is_valid')->default('1');
-            $table->timestamps();
+            $table->dateTime('created_at');
+            $table->dateTime('updated_at')->nullable();
         });
     }
 

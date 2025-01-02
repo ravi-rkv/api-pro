@@ -91,7 +91,7 @@ class NotificationService
                                     "otp" => $otpValue,
                                     "content" => $value['content'],
                                     "is_valid" => 1,
-                                    "created_at" => Carbon::now(),
+                                    "created_at" => Carbon::now()->toDateTimeString(),
                                 );
 
 
