@@ -33,15 +33,22 @@ class AuthService
             return ApiResponse::response('IRD', 'Invalid username or password.', [], 400);
         }
 
+        $userDetail = User::userDetail($userDetail['uid']);
         /* -------------------------- check if 2fa enabled -------------------------- */
 
-        // if ($userDetail['twofa_status'] === 1) {
-        //     return $this->sendOtp($userDetail);
-        // };
+        if ($userDetail['twofa_status'] === 1) {
+            $notificationDetail = [
+                'event_code' => 'LGNOTP',
+                'user_id' => $userDetail['uid'],
+                'name' => ucfirst($userDetail['name']),
+                'email' => $userDetail['email'],
+                'mobile' => $userDetail['mobile']
+            ];
 
-        $userDetail = User::userDetail($userDetail['uid']);
-
-        return $this->generateUserLoginToken($userDetail);
+            return $this->sendOtp($notificationDetail);
+        } else {
+            return $this->generateUserLoginToken($userDetail);
+        }
     }
 
     private function generateUserLoginToken($userDetail)
@@ -148,6 +155,7 @@ class AuthService
 
     private function sendOtp($notificationDetail)
     {
+        $data = [];
         if (!empty($notificationDetail)) {
             $notifyDetail = $notificationDetail;
             $notifyDetail['otp_ref'] =  !empty($notificationDetail['otp_ref']) ? $notificationDetail['otp_ref'] : date('Hmi') . rand(100001, 999999) . date('sY');
@@ -155,8 +163,9 @@ class AuthService
             $sendNotification = new NotificationService();
             $sendOtp =  $sendNotification->sendOtp($notifyDetail);
 
+
             if ($sendOtp['resp_code'] == 'RCS') {
-                $data = ['otp_reference' => $notifyDetail['otp_ref']];
+                $data['otp_reference'] = !empty($sendOtp['otp_reference']) ? $sendOtp['otp_reference'] : $notifyDetail['otp_ref'];
 
                 if ($notificationDetail['event_code'] == 'NEWREG') {
                     $data['registration_reference'] = $notifyDetail['extra_identifier'];
@@ -164,7 +173,7 @@ class AuthService
 
                 return ApiResponse::response('RCS', 'OTP sent successfully', $data, 200);
             } else {
-                return ApiResponse::response('ERR', 'Someting went wrong, try again later..!!', [], 500);
+                return ApiResponse::response('ERR', $sendOtp['resp_desc'], [], 400);
             }
         } else {
             return ApiResponse::response('IPE', 'Internal processing error. #NDNV', [], 500);
@@ -267,6 +276,41 @@ class AuthService
             }
         } else {
             return ApiResponse::response('ERR', 'Someting went wrong, try again later..!! #RDNF', [], 400);
+        }
+    }
+
+    public function changeUserPassword($params)
+    {
+        if (empty($params['uid'])) {
+            return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
+        }
+
+        if (empty($params['new_password'])) {
+            return ApiResponse::response('IRD', 'Invalid request detail .', [], 400);
+        }
+        $userDetail = User::userDetail($params['uid']);
+
+        if (!empty($userDetail)) {
+            if (in_array($userDetail['account_status'], ['ACTIVE', 'PENDING'])) {
+
+                $encPassword = encrypt_pass($params['new_password'], ['uid' => $userDetail['uid'], 'created_at' => $userDetail['created_at']]);
+
+                if ($encPassword) {
+
+                    $updatePassword = User::where(['uid' => $params['uid']])->update(['password' => $encPassword, 'updated_at' => Carbon::now()->toDateTimeString()]);
+                    if ($updatePassword) {
+                        return ApiResponse::response('RCS', 'Password changed successfully', [], 200);
+                    } else {
+                        return ApiResponse::response('ERR', 'Something went wrong , please try again later.', [], 400);
+                    }
+                } else {
+                    return ApiResponse::response('ERR', 'Something went wrong , please try again later.', [], 400);
+                }
+            } else {
+                return ApiResponse::response('ERR', 'Request not allowed , user account is ' . strtolower($userDetail['account_status']) . '.', [], 200);
+            }
+        } else {
+            return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
         }
     }
 }

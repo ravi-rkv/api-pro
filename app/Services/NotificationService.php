@@ -51,10 +51,10 @@ class NotificationService
                                 "sent_on" => $sentOn,
                                 'notify_id' => $value['notify_assoc_id'],
                                 'is_valid' => 1,
-                                "identifier" => isset($notificationDetail['otp_ref']) ? trim($notificationDetail['otp_ref']) : null,
+                                // "identifier" => isset($notificationDetail['otp_ref']) ? trim($notificationDetail['otp_ref']) : null,
                                 "extra_identifier" => isset($notificationDetail['extra_identifier']) ? trim($notificationDetail['extra_identifier']) : null,
                             ]);
-
+                            // dd($checkPreviousOtpSentOn);
 
                             $insertNewLog = true;
                             if ($checkPreviousOtpSentOn) {
@@ -62,12 +62,17 @@ class NotificationService
                                 $resendAllowedUpto = strtotime("+ 10 minutes", $lastNotifSentOn);
                                 $resendSameContent = (($resendAllowedUpto - time()) > 0) ? true : false;
 
+
                                 if ($resendSameContent) {
-                                    $insertNewLog = false;
-                                    $otpValue = trim($checkPreviousOtpSentOn['identifier']); //otpval value changed.
+                                    if ($checkPreviousOtpSentOn['attemp'] >= 3) {
+                                        $insertNewLog = false;
+                                        return ['resp_code' => 'ERR', 'resp_desc' => 'OTP limit exceeded, try after 10 min', 'data' => []];
+                                    } else {
+                                        $insertNewLog = false;
+                                        $otpValue = $checkPreviousOtpSentOn['otp'];
+                                    }
                                 } else {
                                     $otpValue = $newOtpValue;
-                                    $expire_validity = $this->notifyLogs->checkNotificationValidity($checkPreviousOtpSentOn['id']);
                                     $insertNewLog = true;
                                 }
                             } else {
@@ -81,7 +86,7 @@ class NotificationService
 
 
                             if ($insertNewLog === true) {
-                                $logArray = array(
+                                $logArray = [
                                     "notify_id" => $value['notify_id'],
                                     "notify_assoc_id" => $value['notify_assoc_id'],
                                     "uid" => $userId,
@@ -90,29 +95,33 @@ class NotificationService
                                     "extra_identifier" => isset($notificationDetail['extra_identifier']) ? trim($notificationDetail['extra_identifier']) : null,
                                     "otp" => $otpValue,
                                     "content" => $value['content'],
+                                    "attemp" => 1,
                                     "is_valid" => 1,
                                     "created_at" => Carbon::now()->toDateTimeString(),
-                                );
-
-
-                                // dd($logArray);
-
+                                ];
                                 $insertNewOtpLog = NotificationLog::insert($logArray);
+                            } else {
+                                $updateArray = [
+                                    "identifier" => isset($notificationDetail['otp_ref']) ? trim($notificationDetail['otp_ref']) : $checkPreviousOtpSentOn['identifier'],
+                                    "attemp" => $checkPreviousOtpSentOn['attemp'] + 1,
+                                    "updated_at" => Carbon::now()->toDateTimeString(),
+                                ];
+                                $insertNewOtpLog = NotificationLog::where(['id' => $checkPreviousOtpSentOn['id']])->update($updateArray);
                             }
 
                             // $this->processNotification($value, $requestData);
 
                         }
                     }
-                    return ['resp_code' => 'RCS', 'resp_desc' => 'OTP sent successfully.', 'data' => []];
+                    return ['resp_code' => 'RCS', 'resp_desc' => 'OTP sent successfully.', 'data' => ['otp_reference' => isset($notificationDetail['otp_ref']) ? trim($notificationDetail['otp_ref']) : null,]];
                 } else {
-                    return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again.', 'data' => []];
+                    return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again. #EVTNF', 'data' => []];
                 }
             } else {
-                return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again.', 'data' => []];
+                return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again. #SYSDNF', 'data' => []];
             }
         } else {
-            return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again.', 'data' => []];
+            return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again.#INVRD', 'data' => []];
         }
     }
 }

@@ -25,4 +25,5 @@ Route::post('/verifyRegistrationOtp', [AuthController::class, 'verifyRegistratio
 
 Route::middleware('validateToken')->group(function () {
     Route::post('/logout', [AuthController::class, 'logoutUser']);
+    Route::post('/changePassword', [AuthController::class, 'changeUserPassword']);
 });

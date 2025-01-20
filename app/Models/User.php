@@ -31,6 +31,7 @@ class User extends Authenticatable
         'twofa_status',
         'twofa_config',
         'is_deleted',
+        'ref_id',
         'account_status',
         'created_at',
         'created_by',

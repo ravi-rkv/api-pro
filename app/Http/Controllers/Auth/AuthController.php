@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Services\ApiResponse;
 use App\Services\AuthService;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\ValidateUserToken;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -92,7 +93,6 @@ class AuthController extends Controller
                 'registration_reference.required' => 'The registration reference is required.',
             ]
         );
-        Log::info('OTP Input: ', ['request' => $request->all()]);
 
         if ($validator->fails() == TRUE) {
             return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
@@ -115,5 +115,40 @@ class AuthController extends Controller
         } else {
             return ApiResponse::response('IPE', 'Internal processing error.', [], 500);
         }
+    }
+
+    public function changeUserPassword(Request $request)
+    {
+        if (empty($request['uid']) || empty($request['token'])) {
+            return ApiResponse::response('IRD', 'Invalid request details.', [], 400);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[\W_]/',
+            ],
+            'confirm_new_password' => 'required|same:new_password'
+        ], [
+            'new_password.regex' => 'The password must include at least one uppercase letter, one number, and one special character.',
+            'new_password.min' => 'The password must be at least 8 characters long.',
+            'confirm_new_password.same' => 'The confirm password must match the new password.',
+        ]);
+
+        if ($validator->fails() == TRUE) {
+            return ApiResponse::response('IRD', $validator->messages()->first(), [], 400);
+        }
+
+        return $this->authService->changeUserPassword($request->all());
+    }
+
+    public function verifyLoginOtp(Request $request){
+        $validator = Validator::make($request->all(),[
+
+        ])
     }
 }

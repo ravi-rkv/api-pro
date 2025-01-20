@@ -12,7 +12,7 @@ class NotificationLog extends Model
     public function checkPreviousNotification($requestData)
     {
 
-        $data = NotificationLog::where($requestData)->first();
+        $data = NotificationLog::where($requestData)->orderBy('id', 'desc')->first();
 
         if ($data) {
             return $data->toArray();
