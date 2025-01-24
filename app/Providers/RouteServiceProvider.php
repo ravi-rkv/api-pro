@@ -31,6 +31,10 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api/v1')
                 ->group(base_path('routes/api.php'));
 
+            Route::middleware(['api', 'validateToken', 'isAdmin'])
+                ->prefix('api/v1/admin')
+                ->group(base_path('routes/admin_api.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });

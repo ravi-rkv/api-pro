@@ -5,10 +5,12 @@ namespace App\Http\Middleware;
 
 use Closure;
 use App\Models\RestApiLog;
+use App\Models\ApiTokenLog;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Request as FacadesRequest;
 
 class LogRequestResponse
 {
@@ -22,10 +24,20 @@ class LogRequestResponse
         $request->merge(['request_id' => $requestId]);
         $request->headers->set('X-Request-ID', $requestId);
         $payload = $this->maskSensitiveFields($request->all());
+        $uid = null;
+
+        $token =  FacadesRequest::bearerToken();
+        if (!empty($token)) {
+            $tokenData = ApiTokenLog::where(['token' => $token, 'is_active' => 1])->first();
+            if (!empty($tokenData)) {
+                $uid = $tokenData['uid'];
+            }
+        }
 
 
         $logId = DB::table('rest_api_logs')->insertGetId([
             'request_id' => $requestId,
+            'uid' => $uid,
             'method' => $request->method(),
             'url' => $request->fullUrl(),
             'headers' => json_encode($request->headers->all()),

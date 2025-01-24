@@ -51,6 +51,48 @@ class AuthService
         }
     }
 
+    public function verifyUserLoginOtp($params)
+    {
+        if (!empty($params['username']) && !empty($params['otp_reference']) && !empty($params['otp'])) {
+
+
+            $userDetail = User::where('email', $params['username'])->orWhere('mobile', $params['username'])->first();
+
+            if (empty($userDetail)) {
+                return ApiResponse::response('IRD', 'Invalid requested user detail.', [], 400);
+            }
+
+            $otpDetail = NotificationLog::where(['identifier' => $params['otp_reference'], 'uid' => $userDetail['uid'], 'otp' => $params['otp']])->first();
+
+            if (!empty($otpDetail)) {
+                $otpDetail = $otpDetail->toArray();
+                if ($otpDetail['is_valid'] == 1) {
+                    if (!empty($otpDetail['created_at'])) {
+
+                        $allowedTime = Carbon::parse($otpDetail['created_at'])->timezone('Asia/Kolkata')->addMinutes('10')->toDateTimeString(); // 10 min after otp is initiated
+
+                        if ($allowedTime >= Carbon::now()->toDateTimeString()) {
+
+                            NotificationLog::where(['identifier' => $params['otp_reference'], 'uid' => $userDetail['uid'], 'otp' => $params['otp']])->update(['is_valid' => 0, 'updated_at' => Carbon::now()->toDateTimeString()]);
+
+                            return $this->generateUserLoginToken($userDetail);
+                        } else {
+                            return ApiResponse::response('ERR', 'Requested OTP detail is expired', [], 400);
+                        }
+                    } else {
+                        return ApiResponse::response('IPE', 'Something went wrong ,, please try again. #UTGET', [], 400);
+                    }
+                } else {
+                    return ApiResponse::response('ERR', 'Requested OTP detail is not valid', [], 400);
+                }
+            } else {
+                return ApiResponse::response('ERR', 'Invalid requested otp detail', [], 400);
+            }
+        } else {
+            return  ApiResponse::response('IRD', 'Invalid request detail.', [], 400);
+        }
+    }
+
     private function generateUserLoginToken($userDetail)
     {
 
@@ -179,7 +221,6 @@ class AuthService
             return ApiResponse::response('IPE', 'Internal processing error. #NDNV', [], 500);
         }
     }
-
 
     public function verifyUserRegistrationOtp($params)
     {
@@ -311,6 +352,189 @@ class AuthService
             }
         } else {
             return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
+        }
+    }
+
+    public function validateForgetPasswordService($params)
+    {
+        if (empty($params['username'])) {
+            return ApiResponse::response('IRD', 'Invalid request detail .', [], 400);
+        }
+
+        $userDetail = User::where('email', $params['username'])->orWhere('mobile', $params['username'])->first();
+
+        if (!empty($userDetail)) {
+            if (in_array($userDetail['account_status'], ['ACTIVE', 'PENDING'])) {
+
+                $notificationDetail = [
+                    'event_code' => 'FGTOTP',
+                    'user_id' => $userDetail['uid'],
+                    'name' => ucfirst($userDetail['name']),
+                    'email' => $userDetail['email'],
+                    'mobile' => $userDetail['mobile']
+                ];
+
+                return $this->sendOtp($notificationDetail);
+            } else {
+                return ApiResponse::response('ERR', 'Request not allowed , user account is ' . strtolower($userDetail['account_status']) . '.', [], 200);
+            }
+        } else {
+            return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
+        }
+    }
+
+    public function verifyUserForgetPasswordOtp($params)
+    {
+        if (!empty($params['username']) && !empty($params['new_password']) && !empty($params['otp_reference']) && !empty($params['otp'])) {
+
+            $userDetail = User::where('email', $params['username'])->orWhere('mobile', $params['username'])->first();
+
+            if (!empty($userDetail)) {
+                if (in_array($userDetail['account_status'], ['ACTIVE', 'PENDING'])) {
+
+                    $otpDetail = NotificationLog::where(['identifier' => $params['otp_reference'], 'uid' => $userDetail['uid'], 'otp' => $params['otp']])->first();
+
+                    if (!empty($otpDetail)) {
+                        $otpDetail = $otpDetail->toArray();
+                        if ($otpDetail['is_valid'] == 1) {
+                            if (!empty($otpDetail['created_at'])) {
+
+                                $allowedTime = Carbon::parse($otpDetail['created_at'])->timezone('Asia/Kolkata')->addMinutes('10')->toDateTimeString(); // 10 min after otp is initiated
+
+                                if ($allowedTime >= Carbon::now()->toDateTimeString()) {
+
+
+                                    $encPassword = encrypt_pass($params['new_password'], ['uid' => $userDetail['uid'], 'created_at' => $userDetail['created_at']]);
+
+                                    if ($encPassword) {
+                                        NotificationLog::where(['identifier' => $params['otp_reference'], 'uid' => $userDetail['uid'], 'otp' => $params['otp']])->update(['is_valid' => 0, 'updated_at' => Carbon::now()->toDateTimeString()]);
+
+                                        $updatePassword = User::where(['uid' => $userDetail['uid']])->update(['password' => $encPassword, 'updated_at' => Carbon::now()->toDateTimeString()]);
+                                        if ($updatePassword) {
+                                            return ApiResponse::response('RCS', 'Password reset successfully', [], 200);
+                                        } else {
+                                            return ApiResponse::response('ERR', 'Something went wrong , please try again later.', [], 400);
+                                        }
+                                    } else {
+                                        return ApiResponse::response('ERR', 'Something went wrong , please try again later.', [], 400);
+                                    }
+                                } else {
+                                    return ApiResponse::response('ERR', 'Requested OTP detail is expired', [], 400);
+                                }
+                            } else {
+                                return ApiResponse::response('IPE', 'Something went wrong ,, please try again. #UTGET', [], 400);
+                            }
+                        } else {
+                            return ApiResponse::response('ERR', 'Requested OTP detail is not valid', [], 400);
+                        }
+                    } else {
+                        return ApiResponse::response('ERR', 'Invalid requested otp detail', [], 400);
+                    }
+                } else {
+                    return ApiResponse::response('ERR', 'Request not allowed , user account is ' . strtolower($userDetail['account_status']) . '.', [], 200);
+                }
+            } else {
+                return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
+            }
+        } else {
+            return  ApiResponse::response('IRD', 'Invalid request detail.', [], 400);
+        }
+    }
+
+    public function change2FAStatus($params)
+    {
+        if (empty($params['status']) && !in_array($params['status'], ['ENABLE', 'DISABLE'])) {
+            return ApiResponse::response('ERR', 'Invalid request status details.', [], 400);
+        }
+
+        $userDetail = User::userDetail($params['uid']);
+
+        if (!empty($userDetail)) {
+            if (in_array($userDetail['account_status'], ['ACTIVE', 'PENDING'])) {
+
+
+                $allowedStatus = ['DISABLE', 'ENABLE'];
+
+                if ($params['status'] !== $allowedStatus[$userDetail['twofa_status']]) {
+
+                    if ($params['status'] == 'DISABLE') {
+                        $notificationDetail = [
+                            'event_code' => 'CNG2FA',
+                            'user_id' => $userDetail['uid'],
+                            'name' => ucfirst($userDetail['name']),
+                            'email' => $userDetail['email'],
+                            'mobile' => $userDetail['mobile']
+                        ];
+
+                        return $this->sendOtp($notificationDetail);
+                    } else {
+
+                        $changeStatus = User::where(['uid' => $userDetail['uid']])->update(['twofa_status' => 1, 'updated_at' => Carbon::now()->toDateTimeString(), 'updated_by' => $userDetail['uid']]);
+                        if ($changeStatus) {
+                            return ApiResponse::response('RCS', '2FA status changed successfully.', [], 200);
+                        } else {
+                            return ApiResponse::response('ERR', 'Something went wrong , try again later.', [], 200);
+                        }
+                    }
+                } else {
+                    return ApiResponse::response('ERR', '2FA status is already ' . strtolower($params['status']) . 'd.', [], 200);
+                }
+            } else {
+                return ApiResponse::response('ERR', 'Request not allowed , user account is ' . strtolower($userDetail['account_status']) . '.', [], 200);
+            }
+        } else {
+            return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
+        }
+    }
+
+    public function verify2FAStatusOtp($params)
+    {
+        if (!empty($params['status']) && $params['status'] == 'DISABLE' && !empty($params['otp_reference']) && !empty($params['otp'])) {
+
+            $userDetail = User::userDetail($params['uid']);
+
+            if (!empty($userDetail)) {
+                if (in_array($userDetail['account_status'], ['ACTIVE', 'PENDING'])) {
+
+                    $otpDetail = NotificationLog::where(['identifier' => $params['otp_reference'], 'uid' => $userDetail['uid'], 'otp' => $params['otp']])->first();
+
+                    if (!empty($otpDetail)) {
+                        $otpDetail = $otpDetail->toArray();
+                        if ($otpDetail['is_valid'] == 1) {
+                            if (!empty($otpDetail['created_at'])) {
+
+                                $allowedTime = Carbon::parse($otpDetail['created_at'])->timezone('Asia/Kolkata')->addMinutes('10')->toDateTimeString(); // 10 min after otp is initiated
+
+                                if ($allowedTime >= Carbon::now()->toDateTimeString()) {
+
+                                    NotificationLog::where(['identifier' => $params['otp_reference'], 'uid' => $userDetail['uid'], 'otp' => $params['otp']])->update(['is_valid' => 0, 'updated_at' => Carbon::now()->toDateTimeString()]);
+
+                                    $changeStatus = User::where(['uid' => $userDetail['uid']])->update(['twofa_status' => 0, 'updated_at' => Carbon::now()->toDateTimeString(), 'updated_by' => $userDetail['uid']]);
+                                    if ($changeStatus) {
+                                        return ApiResponse::response('RCS', '2FA status changed successfully.', [], 200);
+                                    } else {
+                                        return ApiResponse::response('ERR', 'Something went wrong , try again later.', [], 200);
+                                    }
+                                } else {
+                                    return ApiResponse::response('ERR', 'Requested OTP detail is expired', [], 400);
+                                }
+                            } else {
+                                return ApiResponse::response('IPE', 'Something went wrong ,, please try again. #UTGET', [], 400);
+                            }
+                        } else {
+                            return ApiResponse::response('ERR', 'Requested OTP detail is not valid', [], 400);
+                        }
+                    } else {
+                        return ApiResponse::response('ERR', 'Invalid requested otp detail', [], 400);
+                    }
+                } else {
+                    return ApiResponse::response('ERR', 'Request not allowed , user account is ' . strtolower($userDetail['account_status']) . '.', [], 200);
+                }
+            } else {
+                return ApiResponse::response('ERR', 'Unable to identify user details.', [], 400);
+            }
+        } else {
+            return  ApiResponse::response('IRD', 'Invalid request detail.', [], 400);
         }
     }
 }

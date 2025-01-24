@@ -62,4 +62,30 @@ class User extends Authenticatable
             ->where(['users.uid' => $uid])
             ->first();
     }
+
+    public static function userFullDetail($uid)
+    {
+        return (array) DB::table('users')
+            ->select(
+                'users.uid',
+                'users.name',
+                'users.email',
+                'users.mobile',
+                'users.gender',
+                DB::raw('COALESCE(users.dob, "NA") AS dob'),
+                DB::raw("CONCAT('" . url('/') . "', '/storage/', users.avatar) as avatar"),
+                DB::raw('COALESCE(users.city, "NA") AS city'),
+                DB::raw('COALESCE(users.state, "NA") AS state'),
+                DB::raw('COALESCE(users.country, "NA") AS country'),
+                DB::raw('COALESCE(users.address, "NA") AS address'),
+                'users.twofa_status',
+                'users.role_id',
+                'roles.role_name',
+                'users.account_status',
+                'users.created_at'
+            )
+            ->join('roles', 'users.role_id', '=', 'roles.role_id')
+            ->where(['users.uid' => $uid])
+            ->first();
+    }
 }

@@ -48,6 +48,9 @@ class Kernel extends HttpKernel
         ],
         'validateToken' => [
             \App\Http\Middleware\ValidateUserToken::class,
+        ],
+        'isAdmin' => [
+            \App\Http\Middleware\IsAdmin::class,
         ]
     ];
 

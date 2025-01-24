@@ -1,6 +1,13 @@
 <?php
 
+use App\Models\User;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use App\Models\TabList;
+use App\Models\Permission;
+use Illuminate\Support\Facades\DB;
 use App\Models\TempUserRegistration;
+use Illuminate\Support\Facades\Request;
 
 if (!function_exists('encrypt_pass')) {
     function encrypt_pass($text, $data_array)
@@ -124,5 +131,196 @@ if (!function_exists('generateUserId')) {
                 }
             }
         }
+    }
+}
+
+if (!function_exists('getUserDataByToken')) {
+    function getUserDataByToken($token = null)
+    {
+        $authToken = !empty($token) ? $token : Request::bearerToken();
+
+        if (!empty($authToken)) {
+
+            $key = config('cred.JWT_KEY');
+
+            $tokenData = JWT::decode($authToken, new Key($key, 'HS256'));
+
+
+            if (!empty($tokenData)) {
+                $tokenData = json_decode(json_encode($tokenData), true);
+
+
+                if (!empty($tokenData) && !empty($tokenData['uid'])) {
+                    $userDetail = User::userFullDetail($tokenData['uid']);
+                    if (!empty($userDetail)) {
+                        return $userDetail;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+if (!function_exists('getPageTabAccess')) {
+    function getPageTabAccess($pageId, $result = null)
+    {
+        if (ctype_digit($pageId)) {
+            $data = [];
+            $userDetail = getUserDataByToken();
+            if ($userDetail) {
+
+                $getAllPermission = permissionListByType(null);
+                if ($getAllPermission) {
+
+                    $getTabData = TabList::where('tab_id', $pageId)->where('is_active', 1)->first();
+                    if ($getTabData) {
+
+                        if (in_array($getTabData['permission_id'], $getAllPermission)) {
+
+                            if ($getTabData['parent_tab'] != 0) {
+
+                                return getPageTabAccess($getTabData['parent_tab'], $result = null);
+                            } else {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+if (!function_exists('checkIfPermissionAllowed')) {
+    function checkIfPermissionAllowed($permissionId, $type)
+    {
+        $permissionId = ctype_digit($permissionId) ? trim($permissionId) : "";
+        $type = is_string($type) ? trim($type) : "";
+        if ($permissionId != "" && $type != "") {
+            $getPermissionListByType = permissionListByType($type);
+            if ($getPermissionListByType) {
+                if (in_array($permissionId, $getPermissionListByType)) {
+                    return true;
+                }
+            }
+        }
+    }
+}
+
+if (!function_exists('getTabDataByType')) {
+    function getTabDataByType($type)
+    {
+        if (is_string($type)) {
+            $getPermissionListByType = permissionListByType($type);
+
+            if ($getPermissionListByType) {
+                $getTabListByType = TabList::getTabListByPerm($getPermissionListByType);
+                if ($getTabListByType) {
+                    return $getTabListByType;
+                }
+            }
+        }
+    }
+}
+
+if (!function_exists('permissionListByType')) {
+    function permissionListByType($type = null)
+    {
+        $data = [];
+        $userDetail = getUserDataByToken();
+        if ($userDetail) {
+            $getPermissionData = Permission::getAssignedPermissionByType($userDetail['role_id'], $userDetail['uid'], $type);
+
+            if (!empty($getPermissionData)) {
+                foreach ($getPermissionData as $key => $value) {
+
+                    $data[count($data)] = $value['permission_id'];
+                }
+            }
+        }
+        return $data;
+    }
+}
+
+if (!function_exists('getChildTabData')) {
+    function getChildTabData($parentTabId)
+    {
+        $permissionListByType = permissionListByType('SIDEBAR');
+        $getSideBarArray = TabList::getChildTabData($permissionListByType, $parentTabId);
+        if ($getSideBarArray) {
+            return $getSideBarArray;
+        }
+    }
+}
+
+if (!function_exists('generateSidebar')) {
+    function generateSidebar()
+    {
+        $getSideBarArray = getTabDataByType('SIDEBAR');
+
+        if ($getSideBarArray) {
+            return generateSidebarData($getSideBarArray, 0);
+        }
+    }
+}
+
+
+if (!function_exists('generateSidebarData')) {
+    function generateSidebarData($sidebarArray, $parentTabId)
+    {
+
+
+        $result = []; // Initialize the result array
+
+        foreach ($sidebarArray as $key => $value) {
+
+            $child = getChildTabData($value['tab_id']);
+            $child = $child ?: [];
+
+            if ($value['parent_id'] == 0) {
+                $tabData = [
+                    'tab_id' => $value['tab_id'],
+                    'tab_name' => $value['tab_name'],
+                    'tab_icon' => $value['tab_icon'],
+                    'tab_class' => $value['tab_class'],
+                    'tab_order' => $value['tab_order'],
+                    'tab_url' => $value['tab_url'],
+                ];
+
+                if (!empty($child)) {
+                    $childArray = [];
+                    foreach ($child as $childTab) {
+
+                        $childArray[] = [
+                            'tab_id' => $childTab['tab_id'],
+                            'tab_name' => $childTab['tab_name'],
+                            'tab_icon' => $childTab['tab_icon'],
+                            'tab_class' => $childTab['tab_class'],
+                            'tab_order' => $childTab['tab_order'],
+                            'tab_url' => $childTab['tab_url'],
+                        ];
+                    }
+
+                    $tabData['child'] = $childArray;
+                }
+
+                $result[] = $tabData;
+            }
+        }
+
+        return $result;
+    }
+}
+
+if (!function_exists('printQuery')) {
+    function printQuery($query, $bindings)
+    {
+        $pdo = DB::getPdo();
+        foreach ($bindings as $binding) {
+            $query = preg_replace('/\?/', $pdo->quote($binding), $query, 1);
+        }
+        echo $query;
+        die;
     }
 }
