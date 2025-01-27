@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\Manage\ManageController;
+use App\Http\Controllers\TestController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,9 @@ Route::post('/verifyRegistrationOtp', [AuthController::class, 'verifyRegistratio
 Route::post('/verifyLoginOtp', [AuthController::class, 'verifyLoginOtp']);
 Route::post('/forgetPassword', [AuthController::class, 'forgetPassword']);
 Route::post('/verifyForgetPasswordOtp', [AuthController::class, 'verifyForgetPasswordOtp']);
+
+Route::post('/test', [TestController::class, 'test']);
+
 
 /* ------------------------------ Google Login ------------------------------ */
 

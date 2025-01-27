@@ -43,7 +43,7 @@ class ValidateUserToken
             return ApiResponse::response('IAT', 'Unauthorized: Unable to identify user.', [], 401);
         }
 
-        $request->merge(['token' => $token, 'uid' => $tokenData['uid']]);
+        $request->merge(['token' => $token, 'uid' => $tokenData['uid'], 'rid' => $userDetail['role_id']]);
 
         return $next($request);
     }

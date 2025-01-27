@@ -11,7 +11,7 @@ class UserService
     public function updateUserDetail($params)
     {
         if (empty($params) && $params['uid']) {
-            ApiResponse::response('IRD', 'Invalid request detail.', [], 400);
+            return  ApiResponse::response('IRD', 'Invalid request detail.', [], 400);
         }
 
         $userDetail = User::userDetail($params['uid']);

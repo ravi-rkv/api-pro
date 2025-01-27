@@ -80,13 +80,12 @@ if (!function_exists('generateUserId')) {
 
         if ($userRoleId) {
 
-            $allowedUserRole = [
-                '1' => 'ADM',
-                '2' => 'USR',
-            ];
+            $allowedUserRole = \App\Models\Role::where(['role_id' => $userRoleId])->first();
+            if (!empty($allowedUserRole)) {
 
-            $uidSequence = '';
-            if (in_array($userRoleId, array_keys($allowedUserRole))) {
+                $allowedUserRole = $allowedUserRole->toArray();
+                $uidSequence = '';
+
                 $getExistUid = \App\Models\User::select('uid')->where('role_id', $userRoleId)->orderBy('id', 'DESC')->first();
 
                 if (!empty($getExistUid)) {
@@ -94,40 +93,41 @@ if (!function_exists('generateUserId')) {
                     $lastUid = $getExistUid['uid'];
                     $checkInitials = substr($lastUid, 0, 3);
 
-                    if (($checkInitials == $allowedUserRole[$userRoleId])) {
+                    if (($checkInitials == $allowedUserRole['role_prefix'])) {
                         $uidSequence = substr($lastUid, 3);
                     } else {
-                        return false;
+                        $uidSequence = '0';
                     }
                 } else {
                     $uidSequence = '0';
                 }
-            }
-            if (is_numeric($uidSequence)) {
-                $nextSequesce = $uidSequence + 1;
 
-                $numSeq = strlen($nextSequesce);
+                if (is_numeric($uidSequence)) {
+                    $nextSequesce = $uidSequence + 1;
 
-                if ($numSeq < 6) {
-                    $numeric_part = '';
+                    $numSeq = strlen($nextSequesce);
 
-                    for ($i = 0; $i < (6 - $numSeq); $i++) {
-                        $numeric_part .= '0';
+                    if ($numSeq < 6) {
+                        $numeric_part = '';
+
+                        for ($i = 0; $i < (6 - $numSeq); $i++) {
+                            $numeric_part .= '0';
+                        }
+
+                        $numeric_part .= $nextSequesce;
+                    } else if ($numSeq == 6) {
+                        $numeric_part = $nextSequesce;
+                    } else {
+                        return false;
                     }
 
-                    $numeric_part .= $nextSequesce;
-                } else if ($numSeq == 6) {
-                    $numeric_part = $nextSequesce;
-                } else {
-                    return false;
-                }
+                    $uid = $allowedUserRole['role_prefix'] . $numeric_part;
 
-                $uid = $allowedUserRole[$userRoleId] . $numeric_part;
+                    $checkUidExist = \App\Models\User::where('uid', $uid)->first();
 
-                $checkUidExist = \App\Models\User::where('uid', $uid)->first();
-
-                if (!$checkUidExist) {
-                    return $uid;
+                    if (!$checkUidExist) {
+                        return $uid;
+                    }
                 }
             }
         }
@@ -234,7 +234,6 @@ if (!function_exists('permissionListByType')) {
 
             if (!empty($getPermissionData)) {
                 foreach ($getPermissionData as $key => $value) {
-
                     $data[count($data)] = $value['permission_id'];
                 }
             }
@@ -322,5 +321,60 @@ if (!function_exists('printQuery')) {
         }
         echo $query;
         die;
+    }
+}
+
+
+if (!function_exists('checkIfActionAllowed')) {
+    function checkIfActionAllowed($permissionId, $permissionType, $uid = null)
+    {
+        $isAllowed = null;
+        if (!empty($permissionId) && !empty($permissionType)) {
+
+            $allowedType = [
+                'FETCH' => 'can_read',
+                'ADD' => 'can_write',
+                'UPDATE' => 'can_update',
+                'DELETE' => 'can_delete'
+            ];
+
+            if (in_array($permissionType, array_keys($allowedType))) {
+                $valid = true;
+                $userId = '';
+                $roleId = '';
+
+
+                // check if user id passed in function if not then check the logged in user uid
+                if (!empty($uid)) {
+                    $userDetail =  User::where('uid', $uid)->first();
+                    if (!empty($userDetail)) {
+                        $userId = $userDetail['uid'];
+                        $roleId = $userDetail['role_id'];
+                    } else {
+                        $valid = false;
+                    }
+                } else {
+                    $loggedInUser = getUserDataByToken();
+                    if (!empty($loggedInUser)) {
+                        $userId = $loggedInUser['uid'];
+                        $roleId = $loggedInUser['role_id'];
+                    }
+                }
+
+                if (!empty($userId) && !empty($roleId)) {
+
+                    $getAllowedPermission = Permission::getAllowedPermissionById($permissionId, $userId, $roleId);
+
+                    if (!empty($getAllowedPermission)) {
+
+                        if ($getAllowedPermission[$allowedType[$permissionType]]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $isAllowed;
     }
 }

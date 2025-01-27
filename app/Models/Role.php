@@ -16,6 +16,7 @@ class Role extends Model
         'role_name',
         'role_desc',
         'role_type',
+        'role_prefix',
         'is_active',
     ];
 }

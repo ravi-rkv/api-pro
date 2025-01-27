@@ -31,7 +31,6 @@ class Permission extends Model
                     ['r.role_id', '=', $roleId],
                     ['r.is_active', '=', 1],
                     ['p.is_active', '=', 1],
-                    ['rhp.is_active', '=', 1],
                     ['uit.permission_id', '=', null],
                 ])
                 ->select('rhp.permission_id');
@@ -48,7 +47,6 @@ class Permission extends Model
                         ->where('uit.uid', '=', $userId);
                 })
                 ->where([
-                    ['uhp.is_active', '=', 1],
                     ['uhp.uid', '=', $userId],
                     ['p.is_active', '=', 1],
                     ['uit.permission_id', '=', null],
@@ -75,5 +73,30 @@ class Permission extends Model
         }
 
         return null;
+    }
+
+    public static function getAllowedPermissionById($permissionId, $userId, $roleId)
+    {
+        $hasDirectPermission = DB::table('user_has_permissions')
+            ->select('permission_id', 'can_read', 'can_write', 'can_update', 'can_delete')
+            ->where('uid', $userId)
+            ->where('permission_id', $permissionId)
+            ->first();
+
+        // If the user has direct permission, return true
+        if (!empty($hasDirectPermission)) {
+            return  (array) $hasDirectPermission;
+        }
+        // Otherwise, check if the user’s **role** has the permission
+        $hasRolePermission = DB::table('role_has_permissions')
+            ->select('permission_id', 'can_read', 'can_write', 'can_update', 'can_delete')
+            ->where('role_id', $roleId)
+            ->where('permission_id', $permissionId)
+            ->first();
+
+        // Return whether the user has permission directly or via their role
+        if (!empty($hasRolePermission)) {
+            return (array)  $hasRolePermission;
+        }
     }
 }
