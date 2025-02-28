@@ -29,6 +29,7 @@ class NotificationService
             $email = @$notificationDetail['email'];
             $mobile = @$notificationDetail['mobile'];
             $userId = !empty($notificationDetail['user_id']) ? trim($notificationDetail['user_id']) : null;
+            $notificationDetail['otp_ref'] =   !empty($notificationDetail['otp_ref']) ? $notificationDetail['otp_ref'] : date('Hmi') . rand(100001, 999999) . date('sY');
 
             $systemConfig = SystemConfig::where('id', 1)->first()->toArray();
 
@@ -108,6 +109,75 @@ class NotificationService
                                 ];
                                 $insertNewOtpLog = NotificationLog::where(['id' => $checkPreviousOtpSentOn['id']])->update($updateArray);
                             }
+
+                            // $this->processNotification($value, $requestData);
+
+                        }
+                    }
+                    return ['resp_code' => 'RCS', 'resp_desc' => 'OTP sent successfully.', 'data' => ['otp_reference' => isset($notificationDetail['otp_ref']) ? trim($notificationDetail['otp_ref']) : null,]];
+                } else {
+                    return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again. #EVTNF', 'data' => []];
+                }
+            } else {
+                return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again. #SYSDNF', 'data' => []];
+            }
+        } else {
+            return ['resp_code' => 'ERR', 'resp_desc' => 'Something went wrong , please try again.#INVRD', 'data' => []];
+        }
+    }
+
+    public static function sendNotification($notificationDetail)
+    {
+        if (!empty($notificationDetail)) {
+
+            $eventCode = @$notificationDetail['event_code'];
+            $name = @$notificationDetail['name'];
+            $email = @$notificationDetail['email'];
+            $mobile = @$notificationDetail['mobile'];
+            $userId = !empty($notificationDetail['user_id']) ? trim($notificationDetail['user_id']) : null;
+            $password = !empty($notificationDetail['password']) ? trim($notificationDetail['password']) : null;
+            $userName = $email .  ' / ' . $mobile;
+
+
+            $systemConfig = SystemConfig::where('id', 1)->first()->toArray();
+
+
+
+            if (!empty($systemConfig)) {
+                $notifyConfig = new NotificationConfig();
+                $otpConfigDetail = $notifyConfig->getNotifyDataByEventCode($eventCode);
+
+                if ($otpConfigDetail) {
+
+                    foreach ($otpConfigDetail as $key => $value) {
+
+                        if ($value['notify_on'] == 'SMS' || $value['notify_on'] == 'EMAIL') {
+
+                            $sentOn = ($value['notify_on'] == "SMS") ? $mobile : $email;
+
+
+                            $value['content'] = str_replace('$BRAND_NAME$', $systemConfig['name'], $value['content']);
+                            $value['content'] = str_replace('$USER$', $name, $value['content']);
+                            $value['content'] = str_replace('$USERNAME$', $userName, $value['content']);
+                            $value['content'] = str_replace('$PASSWORD$', $password, $value['content']);
+
+
+
+                            $logArray = [
+                                "notify_id" => $value['notify_id'],
+                                "notify_assoc_id" => $value['notify_assoc_id'],
+                                "uid" => $userId,
+                                "sent_on" => $sentOn,
+                                "identifier" => isset($notificationDetail['otp_ref']) ? trim($notificationDetail['otp_ref']) : null,
+                                "extra_identifier" => isset($notificationDetail['extra_identifier']) ? trim($notificationDetail['extra_identifier']) : null,
+                                "otp" => '',
+                                "content" => $value['content'],
+                                "attemp" => 1,
+                                "is_valid" => 1,
+                                "created_at" => Carbon::now()->toDateTimeString(),
+                            ];
+                            $insertNewOtpLog = NotificationLog::insert($logArray);
+
 
                             // $this->processNotification($value, $requestData);
 

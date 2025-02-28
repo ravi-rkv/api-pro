@@ -57,7 +57,7 @@ class LogRequestResponse
 
         DB::table('rest_api_logs')->where('id', $logId)->update([
             'status_code' => $response->getStatusCode(),
-            'response' => $response->getContent(),
+            'response' => !empty($response->getContent()) ? $response->getContent() : json_encode(['message' => 'No response content']),
             'duration' => $duration,
             'updated_at' => now(),
         ]);

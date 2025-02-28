@@ -378,3 +378,19 @@ if (!function_exists('checkIfActionAllowed')) {
         return $isAllowed;
     }
 }
+
+if (!function_exists('generatePsssword')) {
+    function generatePsssword($name, $dob)
+    {
+        $password = '';
+        $dob = str_replace('-', '', $dob);
+
+        $password .= (strlen($name) >= 4) ? substr($name, 0, 4) : $name;
+        $password .= substr($dob, 0, 4 - strlen($name));
+
+        $password .= substr($dob, 0, 8 - strlen($password));
+        if (!empty($password) && strlen($password) == 8) {
+            return $password;
+        }
+    }
+}

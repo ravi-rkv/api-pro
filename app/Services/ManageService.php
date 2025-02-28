@@ -82,33 +82,58 @@ class ManageService
         }
 
         $uid = generateUserId($params['role_id']);
-
-        if (!empty($uid)) {
-
-            $password = encrypt_pass(, ['uid' => $uid, 'created_at' => $registeredOn]);
+        $password = generatePsssword($params['name'], $params['dob']);
 
 
+        if (!empty($uid) && !empty($password)) {
+
+            $encPassword = encrypt_pass($password, ['uid' => $uid, 'created_at' => Carbon::now()->toDateTimeString()]);
+
+            $userData = [
+                'uid' => $uid,
+                'name' => $params['name'],
+                'email' => $params['email'],
+                'mobile' => $params['mobile'],
+                'gender' => $params['gender'],
+                'dob' => $params['dob'],
+                'city' => $params['city'],
+                'state' => $params['state'],
+                'country' => $params['country'],
+                'address' => $params['address'],
+                'password' => $encPassword,
+                'avatar' => 'assets/image/avatar/user.png',
+                'role_id' => $params['role_id'],
+                'twofa_status' => '1',
+                'twofa_config' => '1',
+                'account_status' => 'ACTIVE',
+                'created_at' => Carbon::now()->toDateTimeString(),
+                'created_by' => $params['uid']
+            ];
+
+
+            // $saveUser = User::create($userData);
+            $saveUser = true;
+            if ($saveUser) {
+                /* ------------------------ need to send mail to user ----------------------- */
+
+                $notificationDetail = [
+                    'event_code' => 'USRREG',
+                    'user_id' => $uid,
+                    'name' => ucfirst($params['name']),
+                    'email' => $params['email'],
+                    'mobile' => $params['mobile'],
+                    'password' => $password
+                ];
+
+                $mail = NotificationService::sendNotification($notificationDetail);
+                dd($mail);
+
+
+                return ApiResponse::response('RCS', 'User registered successfully', [], 200);
+            } else {
+                return ApiResponse::response('ERR', 'Something went wrong , please try again later. #UTRUD', [], 500);
+            }
         }
-        $userData = [
-            'uid' => $uid,
-            'name' => $params['name'],
-            'email' => $params['email'],
-            'mobile' => $params['mobile'],
-            'gender' => $params['gender'],
-            'dob' => $params['dob'],
-            'city' => $params['city'],
-            'state' => $params['state'],
-            'country' => $params['country'],
-            'address' => $params['address'],
-            'password' => $password,
-            'avatar' => 'assets/image/avatar/user.png',
-            'role_id' => $params['role_id'],
-            'twofa_status' => '1',
-            'twofa_config' => '1',
-            'account_status' => 'ACTIVE',
-            'created_at' => Carbon::now()->toDateTimeString(),
-            'created_by' => $uid
-        ];
     }
 
     public function updateUserDetail($params)
